@@ -58,6 +58,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import "canvas";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import pdf from 'pdf-poppler'
 import Tesseract from 'tesseract.js'
