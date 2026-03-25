@@ -59,9 +59,16 @@
 import fs from 'fs'
 import path from 'path'
 import "canvas";
+import { JSDOM } from 'jsdom';
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import pdf from 'pdf-poppler'
 import Tesseract from 'tesseract.js'
+
+// Set up DOM polyfills
+const dom = new JSDOM();
+global.window = dom.window;
+global.document = dom.window.document;
+global.DOMMatrix = dom.window.DOMMatrix;
 
 pdfjs.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
