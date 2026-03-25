@@ -62,6 +62,8 @@ import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import pdf from 'pdf-poppler'
 import Tesseract from 'tesseract.js'
 
+pdfjs.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
+
 // extract text from resume pdf
 export const extractResumeText = async (filePath) => {
 
