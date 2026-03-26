@@ -57,21 +57,30 @@
 // }
 
 // utils/extractResumeText.js
+// utils/extractResumeText.js
 import fs from 'fs';
 import path from 'path';
-import { JSDOM } from 'jsdom';
-import canvasPkg from 'canvas'; // CommonJS-safe import
-const { createCanvas, Canvas, ImageData, Path2D } = canvasPkg;
-
+import { createCanvas, Canvas, ImageData, Path2D } from 'canvas';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdf from 'pdf-poppler';
 import Tesseract from 'tesseract.js';
 
-// ---------- Polyfill for Node ----------
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
-globalThis.window = dom.window;
-globalThis.document = dom.window.document;
-globalThis.DOMMatrix = dom.window.DOMMatrix;
+// ---------- Minimal Node Polyfill for pdfjs ----------
+if (!globalThis.DOMMatrix) {
+  globalThis.DOMMatrix = class DOMMatrix {
+    constructor() {
+      this.a = 1;
+      this.b = 0;
+      this.c = 0;
+      this.d = 1;
+      this.e = 0;
+      this.f = 0;
+    }
+    multiply() { return this; }
+    invertSelf() { return this; }
+  };
+}
+
 globalThis.ImageData = ImageData;
 globalThis.Path2D = Path2D;
 globalThis.Canvas = Canvas;
