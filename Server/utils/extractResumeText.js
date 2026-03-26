@@ -56,44 +56,16 @@
 //    }
 // }
 
-// utils/extractResumeText.js
-// utils/extractResumeText.js
-// utils/extractResumeText.js
-import fs from 'fs';
-import path from 'path';
-import canvasPkg from 'canvas'; // CommonJS-safe import
-const { createCanvas, Canvas, ImageData, Path2D } = canvasPkg;
+import fs from 'fs'
+import path from 'path'
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import pdf from 'pdf-poppler'
+import Tesseract from 'tesseract.js'
 
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import pdf from 'pdf-poppler';
-import Tesseract from 'tesseract.js';
-
-// ---------- Minimal Node Polyfill for pdfjs ----------
-if (!globalThis.DOMMatrix) {
-  globalThis.DOMMatrix = class DOMMatrix {
-    constructor() {
-      this.a = 1;
-      this.b = 0;
-      this.c = 0;
-      this.d = 1;
-      this.e = 0;
-      this.f = 0;
-    }
-    multiply() { return this; }
-    invertSelf() { return this; }
-  };
-}
-
-globalThis.ImageData = ImageData;
-globalThis.Path2D = Path2D;
-globalThis.Canvas = Canvas;
-
-// Set pdfjs worker
-pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
-
-// ---------- Main Function ----------
+// extract text from resume pdf
 export const extractResumeText = async (filePath) => {
-  // Step 1: Try normal PDF text extraction
+
+  // -------- Step 1: Try normal PDF text extraction --------
   try {
     const buffer = await fs.promises.readFile(filePath);
     const uint8Array = new Uint8Array(buffer);
@@ -102,20 +74,26 @@ export const extractResumeText = async (filePath) => {
     const pdfDoc = await loadingTask.promise;
 
     let extractedText = '';
+
     for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
       const content = await page.getTextContent();
       extractedText += content.items.map(item => item.str).join(' ') + '\n';
     }
 
-    if (extractedText.trim().length > 30) return extractedText;
-  } catch (err) {
-    console.log('PDF text extraction failed, falling back to OCR...');
+    if (extractedText.trim().length > 30) {
+      return extractedText;
+    }
+  } catch (error) {
+    console.log('PDF text extraction failed, switching to OCR...');
   }
 
-  // Step 2: OCR fallback
+  // -------- Step 2: OCR fallback --------
   const ocrDir = './ocr-temp';
-  if (!fs.existsSync(ocrDir)) fs.mkdirSync(ocrDir, { recursive: true });
+
+  if (!fs.existsSync(ocrDir)) {
+    fs.mkdirSync(ocrDir, { recursive: true });
+  }
 
   const options = {
     format: 'png',
@@ -124,28 +102,28 @@ export const extractResumeText = async (filePath) => {
     page: null,
   };
 
-  try {
-    await pdf.convert(filePath, options);
-  } catch (err) {
-    console.error('PDF to image conversion failed:', err);
-    return '';
-  }
+  await pdf.convert(filePath, options);
 
   let finalText = '';
+
   const images = fs.readdirSync(ocrDir);
 
   for (const img of images) {
     const imgPath = path.join(ocrDir, img);
 
-    const { data } = await Tesseract.recognize(imgPath, 'eng', {
-      logger: m =>
-        console.log(`OCR ${img}: ${m.status} (${Math.round(m.progress * 100)}%)`),
-    });
+    const { data } = await Tesseract.recognize(
+      imgPath,
+      'eng',
+      {
+        logger: m =>
+          console.log(`OCR ${img}: ${m.status} (${Math.round(m.progress * 100)}%)`)
+      }
+    );
 
     finalText += data.text + '\n';
   }
 
-  // Cleanup after OCR
+  // -------- Cleanup --------
   fs.rmSync(ocrDir, { recursive: true, force: true });
 
   return finalText;
