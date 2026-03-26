@@ -58,9 +58,12 @@
 
 // utils/extractResumeText.js
 // utils/extractResumeText.js
+// utils/extractResumeText.js
 import fs from 'fs';
 import path from 'path';
-import { createCanvas, Canvas, ImageData, Path2D } from 'canvas';
+import canvasPkg from 'canvas'; // CommonJS-safe import
+const { createCanvas, Canvas, ImageData, Path2D } = canvasPkg;
+
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdf from 'pdf-poppler';
 import Tesseract from 'tesseract.js';
