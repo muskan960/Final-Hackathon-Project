@@ -56,50 +56,28 @@
 //    }
 // }
 
-import fs from 'fs'
-import path from 'path'
-import "canvas";
+import fs from 'fs';
+import path from 'path';
+import { createCanvas, Canvas, ImageData, Path2D } from 'canvas';
+import { JSDOM } from 'jsdom';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import pdf from 'pdf-poppler';
+import Tesseract from 'tesseract.js';
 
-// Minimal DOM polyfill for pdfjs - MUST be before pdfjs import
-if (!globalThis.DOMMatrix) {
-  globalThis.DOMMatrix = class DOMMatrix {
-    constructor(transform) {
-      this.a = 1;
-      this.b = 0;
-      this.c = 0;
-      this.d = 1;
-      this.e = 0;
-      this.f = 0;
-    }
-  };
-}
+// ---------- Polyfill for Node ----------
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+globalThis.DOMMatrix = dom.window.DOMMatrix;
+globalThis.ImageData = dom.window.ImageData;
+globalThis.Path2D = dom.window.Path2D;
+globalThis.Canvas = Canvas;
 
-if (!globalThis.ImageData) {
-  globalThis.ImageData = class ImageData {
-    constructor(data, width, height) {
-      this.data = data;
-      this.width = width;
-      this.height = height;
-    }
-  };
-}
+pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 
-if (!globalThis.Path2D) {
-  globalThis.Path2D = class Path2D {
-    constructor() {}
-  };
-}
-
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
-import pdf from 'pdf-poppler'
-import Tesseract from 'tesseract.js'
-
-pdfjs.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
-
-// extract text from resume pdf
+// ---------- Main Function ----------
 export const extractResumeText = async (filePath) => {
-
-  // -------- Step 1: Try normal PDF text extraction --------
+  // Step 1: Try normal PDF text extraction
   try {
     const buffer = await fs.promises.readFile(filePath);
     const uint8Array = new Uint8Array(buffer);
@@ -108,26 +86,20 @@ export const extractResumeText = async (filePath) => {
     const pdfDoc = await loadingTask.promise;
 
     let extractedText = '';
-
     for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
       const content = await page.getTextContent();
       extractedText += content.items.map(item => item.str).join(' ') + '\n';
     }
 
-    if (extractedText.trim().length > 30) {
-      return extractedText;
-    }
-  } catch (error) {
-    console.log('PDF text extraction failed, switching to OCR...');
+    if (extractedText.trim().length > 30) return extractedText;
+  } catch (err) {
+    console.log('PDF text extraction failed, falling back to OCR...');
   }
 
-  // -------- Step 2: OCR fallback --------
+  // Step 2: OCR fallback
   const ocrDir = './ocr-temp';
-
-  if (!fs.existsSync(ocrDir)) {
-    fs.mkdirSync(ocrDir, { recursive: true });
-  }
+  if (!fs.existsSync(ocrDir)) fs.mkdirSync(ocrDir, { recursive: true });
 
   const options = {
     format: 'png',
@@ -136,30 +108,29 @@ export const extractResumeText = async (filePath) => {
     page: null,
   };
 
-  await pdf.convert(filePath, options);
+  try {
+    await pdf.convert(filePath, options);
+  } catch (err) {
+    console.error('PDF to image conversion failed:', err);
+    return '';
+  }
 
   let finalText = '';
-
   const images = fs.readdirSync(ocrDir);
 
   for (const img of images) {
     const imgPath = path.join(ocrDir, img);
 
-    const { data } = await Tesseract.recognize(
-      imgPath,
-      'eng',
-      {
-        logger: m =>
-          console.log(`OCR ${img}: ${m.status} (${Math.round(m.progress * 100)}%)`)
-      }
-    );
+    const { data } = await Tesseract.recognize(imgPath, 'eng', {
+      logger: m =>
+        console.log(`OCR ${img}: ${m.status} (${Math.round(m.progress * 100)}%)`),
+    });
 
     finalText += data.text + '\n';
   }
 
-  // -------- Cleanup --------
+  // Cleanup after OCR
   fs.rmSync(ocrDir, { recursive: true, force: true });
 
   return finalText;
 };
-
