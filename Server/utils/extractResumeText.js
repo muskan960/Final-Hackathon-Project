@@ -59,11 +59,8 @@
 import fs from 'fs'
 import path from 'path'
 import "canvas";
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
-import pdf from 'pdf-poppler'
-import Tesseract from 'tesseract.js'
 
-// Minimal DOM polyfill for pdfjs
+// Minimal DOM polyfill for pdfjs - MUST be before pdfjs import
 if (!globalThis.DOMMatrix) {
   globalThis.DOMMatrix = class DOMMatrix {
     constructor(transform) {
@@ -92,6 +89,10 @@ if (!globalThis.Path2D) {
     constructor() {}
   };
 }
+
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import pdf from 'pdf-poppler'
+import Tesseract from 'tesseract.js'
 
 pdfjs.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
