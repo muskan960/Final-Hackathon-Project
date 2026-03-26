@@ -56,10 +56,13 @@
 //    }
 // }
 
+// utils/extractResumeText.js
 import fs from 'fs';
 import path from 'path';
-import { createCanvas, Canvas, ImageData, Path2D } from 'canvas';
 import { JSDOM } from 'jsdom';
+import canvasPkg from 'canvas'; // CommonJS-safe import
+const { createCanvas, Canvas, ImageData, Path2D } = canvasPkg;
+
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdf from 'pdf-poppler';
 import Tesseract from 'tesseract.js';
@@ -69,10 +72,11 @@ const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.DOMMatrix = dom.window.DOMMatrix;
-globalThis.ImageData = dom.window.ImageData;
-globalThis.Path2D = dom.window.Path2D;
+globalThis.ImageData = ImageData;
+globalThis.Path2D = Path2D;
 globalThis.Canvas = Canvas;
 
+// Set pdfjs worker
 pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 
 // ---------- Main Function ----------
